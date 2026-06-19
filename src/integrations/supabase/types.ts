@@ -14,7 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      messages: {
+        Row: {
+          created_at: string
+          id: string
+          sender_id: string
+          sender_name: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sender_id: string
+          sender_name: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sender_id?: string
+          sender_name?: string
+          text?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          last_seen: string
+          name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          last_seen?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          last_seen?: string
+          name?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      typing_status: {
+        Row: {
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
