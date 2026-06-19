@@ -1,29 +1,46 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import chatLogo from "@/assets/chat-logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Pulse — Real-time chat for your team" },
+      { name: "description", content: "A modern, real-time chat app with presence, typing indicators, and instant messaging." },
+      { property: "og:title", content: "Pulse — Real-time chat" },
+      { property: "og:description", content: "Modern real-time messaging built on Lovable Cloud." },
     ],
   }),
-  component: Index,
+  component: Landing,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Landing() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen flex flex-col">
+      <header className="px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <img src={chatLogo} alt="Pulse" width={36} height={36} className="rounded-lg" />
+          <span className="font-semibold tracking-tight">Pulse</span>
+        </div>
+        <Link to="/auth" className="text-sm font-medium px-4 py-2 rounded-lg hover:bg-muted transition">Sign in</Link>
+      </header>
+      <main className="flex-1 flex items-center justify-center px-6">
+        <div className="max-w-2xl text-center">
+          <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
+            Conversations that feel <span className="bg-brand-gradient bg-clip-text text-transparent">instant</span>.
+          </h1>
+          <p className="mt-5 text-lg text-muted-foreground">
+            Real-time messaging, live presence, and typing indicators — built with a serverless backend you don't have to manage.
+          </p>
+          <div className="mt-8 flex gap-3 justify-center">
+            <Link to="/auth" className="bg-brand-gradient text-primary-foreground px-6 py-3 rounded-xl font-medium shadow-glow hover:opacity-90 transition">
+              Start chatting
+            </Link>
+          </div>
+        </div>
+      </main>
+      <footer className="px-6 py-6 text-center text-xs text-muted-foreground">
+        Built on Lovable Cloud
+      </footer>
     </div>
   );
 }
