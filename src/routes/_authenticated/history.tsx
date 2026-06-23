@@ -65,10 +65,16 @@ function HistoryPage() {
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return messages;
-    return messages.filter(
-      (m) => m.text.toLowerCase().includes(term) || m.sender_name.toLowerCase().includes(term),
-    );
-  }, [messages, q]);
+    return messages.filter((m) => {
+      const peerId = m.sender_id === user.id ? m.recipient_id : m.sender_id;
+      const peerName = profiles[peerId]?.name ?? "";
+      return (
+        m.text.toLowerCase().includes(term) ||
+        m.sender_name.toLowerCase().includes(term) ||
+        peerName.toLowerCase().includes(term)
+      );
+    });
+  }, [messages, q, profiles, user.id]);
 
   // Group by date label
   const groups = useMemo(() => {
