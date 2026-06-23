@@ -126,8 +126,10 @@ function HistoryPage() {
                 <div className="rounded-xl border bg-card divide-y">
                   {items.map((m) => {
                     const mine = m.sender_id === user.id;
+                    const peerId = mine ? m.recipient_id : m.sender_id;
+                    const peerName = profiles[peerId]?.name ?? "Unknown";
                     const readers = readsByMsg.get(m.id);
-                    const otherReaders = readers ? Array.from(readers).filter((u) => u !== m.sender_id) : [];
+                    const seenByPeer = readers ? Array.from(readers).some((u) => u !== m.sender_id) : false;
                     return (
                       <div key={m.id} className="p-3 flex gap-3">
                         <div className="w-9 h-9 rounded-full bg-brand-gradient flex items-center justify-center text-primary-foreground text-sm font-semibold shrink-0">
@@ -136,12 +138,13 @@ function HistoryPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-2 flex-wrap">
                             <span className="font-medium text-sm">{m.sender_name}{mine && " (you)"}</span>
+                            <span className="text-[11px] text-muted-foreground">→ {mine ? peerName : "you"}</span>
                             <span className="text-[11px] text-muted-foreground">
                               {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
-                            {mine && otherReaders.length > 0 && (
+                            {mine && seenByPeer && (
                               <span className="text-[11px] text-primary flex items-center gap-0.5">
-                                <CheckCheck size={11} /> Seen by {otherReaders.length}
+                                <CheckCheck size={11} /> Seen
                               </span>
                             )}
                           </div>
