@@ -1,8 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Send, LogOut, Users, Circle } from "lucide-react";
+import { Send, LogOut, Users, Circle, History, Check, CheckCheck } from "lucide-react";
 import chatLogo from "@/assets/chat-logo.png";
 
 export const Route = createFileRoute("/_authenticated/chat")({
@@ -26,6 +26,7 @@ type Profile = {
 };
 
 type TypingRow = { user_id: string; name: string; updated_at: string };
+type ReadRow = { message_id: string; user_id: string; read_at: string };
 
 const PRESENCE_INTERVAL = 25_000;
 const TYPING_TTL = 4_000;
@@ -36,13 +37,14 @@ function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [typing, setTyping] = useState<TypingRow[]>([]);
+  const [reads, setReads] = useState<ReadRow[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const myName = (user.user_metadata as { name?: string })?.name || user.email?.split("@")[0] || "User";
 
-  // Auto-scroll to bottom on new messages
+  // Auto-scroll
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
@@ -50,9 +52,10 @@ function ChatPage() {
   // Initial load
   useEffect(() => {
     (async () => {
-      const [msgs, profs] = await Promise.all([
+      const [msgs, profs, rds] = await Promise.all([
         supabase.from("messages").select("*").order("created_at", { ascending: true }).limit(200),
         supabase.from("profiles").select("*"),
+        supabase.from("message_reads").select("*"),
       ]);
       if (msgs.data) setMessages(msgs.data as Message[]);
       if (profs.data) {
@@ -60,6 +63,7 @@ function ChatPage() {
         for (const p of profs.data as Profile[]) map[p.id] = p;
         setProfiles(map);
       }
+      if (rds.data) setReads(rds.data as ReadRow[]);
     })();
   }, []);
 
@@ -98,11 +102,31 @@ function ChatPage() {
         if (data) setTyping(data as TypingRow[]);
       })
       .subscribe();
-    supabase.from("typing_status").select("*").then(({ data }) => data && setTyping(data as TypingRow[]));
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Presence — heartbeat my online status & cleanup on unload
+  // Realtime: read receipts
+  useEffect(() => {
+    const channel = supabase
+      .channel("reads-feed")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "message_reads" }, (payload) => {
+        setReads((prev) => [...prev, payload.new as ReadRow]);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  // Mark visible incoming messages as read
+  useEffect(() => {
+    const unread = messages.filter(
+      (m) => m.sender_id !== user.id && !reads.some((r) => r.message_id === m.id && r.user_id === user.id),
+    );
+    if (unread.length === 0) return;
+    const rows = unread.map((m) => ({ message_id: m.id, user_id: user.id }));
+    supabase.from("message_reads").upsert(rows, { onConflict: "message_id,user_id", ignoreDuplicates: true }).then();
+  }, [messages, reads, user.id]);
+
+  // Presence heartbeat
   useEffect(() => {
     const ping = () =>
       supabase.from("profiles").update({ status: "online", last_seen: new Date().toISOString() }).eq("id", user.id);
@@ -160,7 +184,6 @@ function ChatPage() {
     navigate({ to: "/auth" });
   }
 
-  // Online = pinged in last 60s
   const cutoff = Date.now() - 60_000;
   const allUsers = Object.values(profiles).sort((a, b) => a.name.localeCompare(b.name));
   const onlineUsers = allUsers.filter((p) => p.status === "online" && new Date(p.last_seen).getTime() > cutoff);
@@ -168,9 +191,18 @@ function ChatPage() {
     (t) => t.user_id !== user.id && Date.now() - new Date(t.updated_at).getTime() < TYPING_TTL,
   );
 
+  // Per-message reader counts (exclude sender)
+  const readsByMsg = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const r of reads) {
+      if (!m.has(r.message_id)) m.set(r.message_id, new Set());
+      m.get(r.message_id)!.add(r.user_id);
+    }
+    return m;
+  }, [reads]);
+
   return (
     <div className="h-screen flex bg-background">
-      {/* Sidebar */}
       <aside className={`${showUsers ? "flex" : "hidden"} md:flex flex-col w-72 border-r bg-card`}>
         <div className="p-4 border-b flex items-center gap-2">
           <img src={chatLogo} alt="" width={32} height={32} className="rounded-lg" />
@@ -201,15 +233,22 @@ function ChatPage() {
             );
           })}
         </div>
-        <button
-          onClick={signOut}
-          className="m-3 flex items-center justify-center gap-2 text-sm py-2 rounded-lg border hover:bg-muted transition"
-        >
-          <LogOut size={16} /> Sign out
-        </button>
+        <div className="m-3 space-y-2">
+          <Link
+            to="/history"
+            className="flex items-center justify-center gap-2 text-sm py-2 rounded-lg border hover:bg-muted transition"
+          >
+            <History size={16} /> Chat history
+          </Link>
+          <button
+            onClick={signOut}
+            className="w-full flex items-center justify-center gap-2 text-sm py-2 rounded-lg border hover:bg-muted transition"
+          >
+            <LogOut size={16} /> Sign out
+          </button>
+        </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 flex flex-col min-w-0">
         <header className="px-4 py-3 border-b flex items-center gap-3">
           <button onClick={() => setShowUsers((s) => !s)} className="md:hidden p-2 rounded-lg hover:bg-muted">
@@ -219,6 +258,9 @@ function ChatPage() {
             <h1 className="font-semibold">General</h1>
             <p className="text-xs text-muted-foreground">{onlineUsers.length} online · {allUsers.length} members</p>
           </div>
+          <Link to="/history" className="md:hidden p-2 rounded-lg hover:bg-muted" aria-label="History">
+            <History size={18} />
+          </Link>
         </header>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-3">
@@ -229,6 +271,8 @@ function ChatPage() {
             const mine = m.sender_id === user.id;
             const prev = messages[i - 1];
             const showHeader = !prev || prev.sender_id !== m.sender_id;
+            const readers = readsByMsg.get(m.id);
+            const otherReaders = readers ? Array.from(readers).filter((u) => u !== m.sender_id) : [];
             return (
               <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[75%] ${mine ? "items-end" : "items-start"} flex flex-col`}>
@@ -244,8 +288,17 @@ function ChatPage() {
                   >
                     <div className="whitespace-pre-wrap break-words text-sm">{m.text}</div>
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1 px-2">
-                    {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  <div className="text-[10px] text-muted-foreground mt-1 px-2 flex items-center gap-1">
+                    <span>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    {mine && (
+                      otherReaders.length > 0 ? (
+                        <span className="flex items-center gap-0.5 text-primary" title={`Seen by ${otherReaders.length}`}>
+                          <CheckCheck size={12} /> {otherReaders.length}
+                        </span>
+                      ) : (
+                        <Check size={12} className="opacity-60" />
+                      )
+                    )}
                   </div>
                 </div>
               </div>
