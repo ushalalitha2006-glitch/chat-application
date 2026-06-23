@@ -11,26 +11,44 @@ type Message = {
   id: string;
   sender_id: string;
   sender_name: string;
+  recipient_id: string;
   text: string;
   created_at: string;
 };
+type Profile = { id: string; name: string };
 type ReadRow = { message_id: string; user_id: string };
 
 function HistoryPage() {
   const { user } = Route.useRouteContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [reads, setReads] = useState<ReadRow[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [msgs, rds] = await Promise.all([
-        supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(1000),
-        supabase.from("message_reads").select("message_id,user_id"),
+      // RLS restricts results to messages where the current user is sender or recipient
+      const { data: msgs } = await supabase
+        .from("messages")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      const list = (msgs ?? []) as Message[];
+      setMessages(list);
+      const ids = list.map((m) => m.id);
+      const [rds, profs] = await Promise.all([
+        ids.length
+          ? supabase.from("message_reads").select("message_id,user_id").in("message_id", ids)
+          : Promise.resolve({ data: [] as ReadRow[] }),
+        supabase.from("profiles").select("id,name"),
       ]);
-      if (msgs.data) setMessages(msgs.data as Message[]);
       if (rds.data) setReads(rds.data as ReadRow[]);
+      if (profs.data) {
+        const map: Record<string, Profile> = {};
+        for (const p of profs.data as Profile[]) map[p.id] = p;
+        setProfiles(map);
+      }
       setLoading(false);
     })();
   }, []);
@@ -47,10 +65,16 @@ function HistoryPage() {
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return messages;
-    return messages.filter(
-      (m) => m.text.toLowerCase().includes(term) || m.sender_name.toLowerCase().includes(term),
-    );
-  }, [messages, q]);
+    return messages.filter((m) => {
+      const peerId = m.sender_id === user.id ? m.recipient_id : m.sender_id;
+      const peerName = profiles[peerId]?.name ?? "";
+      return (
+        m.text.toLowerCase().includes(term) ||
+        m.sender_name.toLowerCase().includes(term) ||
+        peerName.toLowerCase().includes(term)
+      );
+    });
+  }, [messages, q, profiles, user.id]);
 
   // Group by date label
   const groups = useMemo(() => {
@@ -102,8 +126,10 @@ function HistoryPage() {
                 <div className="rounded-xl border bg-card divide-y">
                   {items.map((m) => {
                     const mine = m.sender_id === user.id;
+                    const peerId = mine ? m.recipient_id : m.sender_id;
+                    const peerName = profiles[peerId]?.name ?? "Unknown";
                     const readers = readsByMsg.get(m.id);
-                    const otherReaders = readers ? Array.from(readers).filter((u) => u !== m.sender_id) : [];
+                    const seenByPeer = readers ? Array.from(readers).some((u) => u !== m.sender_id) : false;
                     return (
                       <div key={m.id} className="p-3 flex gap-3">
                         <div className="w-9 h-9 rounded-full bg-brand-gradient flex items-center justify-center text-primary-foreground text-sm font-semibold shrink-0">
@@ -112,12 +138,13 @@ function HistoryPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-2 flex-wrap">
                             <span className="font-medium text-sm">{m.sender_name}{mine && " (you)"}</span>
+                            <span className="text-[11px] text-muted-foreground">→ {mine ? peerName : "you"}</span>
                             <span className="text-[11px] text-muted-foreground">
                               {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
-                            {mine && otherReaders.length > 0 && (
+                            {mine && seenByPeer && (
                               <span className="text-[11px] text-primary flex items-center gap-0.5">
-                                <CheckCheck size={11} /> Seen by {otherReaders.length}
+                                <CheckCheck size={11} /> Seen
                               </span>
                             )}
                           </div>

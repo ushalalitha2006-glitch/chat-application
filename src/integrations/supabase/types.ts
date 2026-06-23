@@ -44,6 +44,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          recipient_id: string
           sender_id: string
           sender_name: string
           text: string
@@ -51,6 +52,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          recipient_id: string
           sender_id: string
           sender_name: string
           text: string
@@ -58,6 +60,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          recipient_id?: string
           sender_id?: string
           sender_name?: string
           text?: string
