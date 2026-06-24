@@ -226,7 +226,9 @@ Portions of this project — including initial scaffolding, UI components, datab
 ## Author
 
 **Developed by:** B.Usha Lalitha
+
 **Internship:** Summer Internship Project @ **Codec Technologies**
+
 **Year:** 2026
 
 For questions or feedback, please open an issue on the repository.
