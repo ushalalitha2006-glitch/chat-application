@@ -225,11 +225,17 @@ Portions of this project — including initial scaffolding, UI components, datab
 
 ## Author
 
-**Developed by:** *[Your Name]*
+**Developed by:** B.Usha Lalitha
 **Internship:** Summer Internship Project @ **Codec Technologies**
-**Year:** 2025
+**Year:** 2026
 
 For questions or feedback, please open an issue on the repository.
+
+---
+
+## Live Link
+
+https://lovable.dev/projects/06bcb695-006b-48c7-8bb3-744b6f7c796c
 
 ---
 
