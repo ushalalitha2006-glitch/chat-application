@@ -211,12 +211,6 @@ For the included setup, the production build runs on **Cloudflare Workers** with
 
 ---
 
-## Screenshots
-
-> Add screenshots/GIFs of the landing page, chat interface, and mobile view here.
-
----
-
 ## AI Assistance Acknowledgment
 
 Portions of this project — including initial scaffolding, UI components, database migrations, and documentation — were developed with the help of **AI coding assistants**. Every AI-generated suggestion was reviewed, tested, and adapted by the author to meet the project's requirements and quality standards. AI was used as a productivity tool, not as a substitute for understanding the codebase.
@@ -237,7 +231,7 @@ For questions or feedback, please open an issue on the repository.
 
 ## Live Link
 
-https://lovable.dev/projects/06bcb695-006b-48c7-8bb3-744b6f7c796c
+https://pulse-cloud-chat.lovable.app
 
 ---
 
