@@ -21,7 +21,6 @@ type Message = {
 type Profile = {
   id: string;
   name: string;
-  email: string;
   status: string;
   last_seen: string;
 };
